@@ -1,6 +1,6 @@
 This is a webcrawler script written in python. The goal is that everyone could travel the web themselves. 
 
-There are several things - 
+Several things - 
 You could either add a brand new link or start from where you left of. First time you'd run the script it'd require you to provide a link - it'd create a DB file using sqlite3, to which it'll append all the webpages (referenced by the webpage you provide). It'll then proceed to do the same for them - each appended webpage will be scanned for URLs, content, title, and date of creation - all of which correspond to a single row. 
 
 There is a machine learning model involved used to detect URLs likely referring to content pages such as news articles. The goal of course is to be able to query yourself whatever you crawled. This an ongoing work, naturally there might be issues. 
