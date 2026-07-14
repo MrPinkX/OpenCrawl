@@ -8,6 +8,6 @@ There is a machine learning model involved used to detect URLs likely referring 
 
 You could choose how many entries to add to the dataset, and how many pages to gather from each page. You could choose, as said, whether to begin the loop from a new link you provided, or from some existing point at the dataset. If you don't provide an answer to the first question it'll choose to start from an existing point, and you don't specify it it'd be the last entry in the dataset. 
 
----
+____
 
 Ultimately you'd want to pair it up with some frontend that'd allow for some discovery experiece. Till then you could just make your own queries. 
