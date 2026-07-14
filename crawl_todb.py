@@ -155,6 +155,7 @@ def tuple_todic(tup):
     dic['title'] = tup[0]
     dic['content'] = tup[3]
     dic['links'] = tup[4]
+    dic['base_url'] = tup[1]
     return dic
 
 rows = [tuple_todic(i) for i in cursor.fetchall()]
@@ -182,7 +183,7 @@ def is_url_articlesk(url):
 
 
 
-def crawl(start_point, amount_toappend):
+def crawl(start_point, amount_toappend, only_new_bases=False):
     amount_added = 0
 
     increase = 1
@@ -193,14 +194,26 @@ def crawl(start_point, amount_toappend):
 
     while amount_added<amount_toappend:
         try:
-            print(current_page.keys())
-            row_links = eval(str(current_page['links']))
-            existing_urls = [i['url'] for i in rows] 
+            articles = []
+            while len(articles) < 1:
+                print(current_page.keys())
+                row_links = eval(str(current_page['links']))
+                existing_urls = [i['url'] for i in rows] 
 
-            links_togo = set(row_links) - set(existing_urls)
-            articles = [i for i in links_togo if is_url_articlesk(i)]
-            if len(articles) < 1:
-                no_links_enteries.append(index)
+                links_togo = set(row_links) - set(existing_urls)
+
+                if only_new_bases == "y":
+                    current_bases = [i['base_url'] for i in rows]
+                    bases_togo = set([get_urlbase(i) for i in links_togo]) - set(current_bases)
+                    links_togo = [i for i in links_togo if get_urlbase(i) in bases_togo]
+                    articles = links_togo
+                else:
+                    articles = [i for i in links_togo if is_url_articlesk(i)]
+                    if len(articles) < 1:
+                        no_links_enteries.append(index)
+                        index -= 1
+                        current_page = rows[index]
+                print("links to go: ", links_togo)
             
             print("\n")
             print("Retriving from: " + current_page["url"], "links: " + str(articles[0:5]))
@@ -238,8 +251,6 @@ def crawl(start_point, amount_toappend):
 
 
 
-
-
 start_point = -1
 while (start_point==-1):
     new_link = input("Provide a new link or start from somewhere in the dataset")
@@ -249,22 +260,15 @@ while (start_point==-1):
     else:
         if len(rows) > 0:
             start_point = input("Where to start? ") or len(rows)-1 
+    
+
+
+only_new_bases = input("Only new bases? ")
 
 
 
-crawl(start_point, 30)
+crawl(start_point, 30, only_new_bases)
+
 
 amount_toappend = input("How many new pages? ") or 1000 
-
-
-
-
-
-
-
-
-
-
-
-
 
