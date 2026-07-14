@@ -10,6 +10,8 @@ You could choose how many total entries to add to the dataset, and how many page
 
 Naturally an issue is crawling time, which 30 minutes might get you a decent amount. 
 
+There is also a "postcrawl analysis" script on thr work, which rank entries according to the amount they're referenced by other entries. There of course numerous ways to curate the pages. 
+
 ____
 
 Ultimately you'd want to pair it up with some frontend that'd allow for some discovery experiece. Till then you could just make your own queries.  
