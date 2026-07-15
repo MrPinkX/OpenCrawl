@@ -65,7 +65,7 @@ def get_date_from_page(soup):
 
 def get_webpage_(url): 
 
-    print("getting initiated")
+    print("getting initiated for ", url)
     response = r.get(url)
     print("got response")
 
@@ -112,7 +112,6 @@ def get_webpage_(url):
 
     if (len(texts) > 20) or is_url_article(url):
         article_ = True
-        print("Is article")
 
 
     page = {'title': title, 'base_url': base_url, 'url': url, 'content': content, 'links': links_, 'article':article_, "date": date}
@@ -159,6 +158,7 @@ def tuple_todic(tup):
     return dic
 
 rows = [tuple_todic(i) for i in cursor.fetchall()]
+# Fetch current crawl 
 initial_length = len(rows)
 
 
@@ -179,96 +179,108 @@ def is_url_articlesk(url):
     prediction = loaded_clf.predict(url_counts)
     if prediction[0] == "non article":
         return False 
+    
     return True
 
 
 
-def crawl(start_point, amount_toappend, only_new_bases=False):
+
+
+
+
+def crawl(total_amount=20, single_entry_amount=10, pages_per_base=10): 
     amount_added = 0
 
-    increase = 1
-    no_links_enteries = []
+    bases_crawled = {}
 
-    index = start_point
-    current_page = rows[index]
+    index = len(rows)-1
+    print(index)
+    while amount_added<total_amount:
 
-    while amount_added<amount_toappend:
-        try:
-            articles = []
-            while len(articles) < 1:
-                print(current_page.keys())
-                row_links = eval(str(current_page['links']))
-                existing_urls = [i['url'] for i in rows] 
+        links_togo = []
+        while len(links_togo) < 1:
+            entry = rows[index]
+            # All referenced URLs of a single entry
+            if type(entry["links"]) == str:
+                entry_links = eval(entry["links"])
+            else:
+                entry_links = entry["links"]
 
-                links_togo = set(row_links) - set(existing_urls)
+            # Only those not in the database 
+            links_togo = set(entry_links) - set([i['url'] for i in rows])
 
-                if only_new_bases == "y":
-                    current_bases = [i['base_url'] for i in rows]
-                    bases_togo = set([get_urlbase(i) for i in links_togo]) - set(current_bases)
-                    links_togo = [i for i in links_togo if get_urlbase(i) in bases_togo]
-                    articles = links_togo
-                else:
-                    articles = [i for i in links_togo if is_url_articlesk(i)]
-                    if len(articles) < 1:
-                        no_links_enteries.append(index)
-                        index -= 1
-                        current_page = rows[index]
-                print("links to go: ", links_togo)
+            # Only those likely referring to an article
+            links_togo = [i for i in links_togo if is_url_articlesk(i)]
+            index -= 1
+
+
+        retrived_from_entry = 0
+        print("Retriving pages from: ", entry["title"])
+        # Retrive webpages from a single entry 
+        for link in links_togo:
+            if retrived_from_entry > single_entry_amount:
+                break
+
+            # Limits amount of gathered pages per base
+            url_base = get_urlbase(link)
+            if url_base in bases_crawled:
+                if bases_crawled[url_base] < pages_per_base:
+                    bases_crawled[url_base] += 1 
+            else:
+                bases_crawled[url_base] = 1
             
-            print("\n")
-            print("Retriving from: " + current_page["url"], "links: " + str(articles[0:5]))
-            for i in articles: 
-                print(" ")
-                if amount_added > amount_toappend:
-                    print("yes")
-                    break
-                try:
-                    print("getting: " + str(i))
-                    new_webpage = get_webpage_(i)
-                    rows.append(new_webpage)
-                    print("no")
-                    retrival_time = datetime.now()
-                    print("Got " + str(i))
-                    command = "INSERT INTO enteries__ (base_url, url, title, content, links, source, article, retrival_time, c_date, index_row) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-                    cursor.execute(command, (str(new_webpage['base_url']), str(new_webpage['url']),str (new_webpage['title']), str(new_webpage['content']), str(new_webpage['links']), str(rows[index]['url']), str(new_webpage['article']), retrival_time, new_webpage['date'], len(rows) + amount_added))
-                    conn.commit()
-                    print(new_webpage['title'], "Added")
+            # Retrieve webpage only if we've crawled less then this or that amount of pages of it's base
+            if bases_crawled[url_base] < pages_per_base:
+                try: 
+                    # Get webpage
+                    webpage = get_webpage_(link) 
+                    rows.append(webpage) 
                     amount_added += 1 
+                    retrived_from_entry += 1
+
+                    # Append to DataBase
+                    retrival_time = datetime.now()
+                    command = "INSERT INTO enteries__ (base_url, url, title, content, links, source, article, retrival_time, c_date, index_row) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                    cursor.execute(command, (str(webpage['base_url']), str(webpage['url']),str (webpage['title']), str(webpage['content']), str(webpage['links']), str(rows[index]['url']), str(webpage['article']), retrival_time, webpage['date'], len(rows) + amount_added))
+                    conn.commit()
+
+                    # Show what's going on 
+                    print(webpage['title'], "added") 
+                    print(retrived_from_entry, "out of ", single_entry_amount, "for that entry")
+                    print(bases_crawled[url_base], "out of ", pages_per_base, "for that base")
+                    print(amount_added, "out of ", total_amount, "total")
+                    print(url_base)
+                    print(bases_crawled)
+                    print('\n')
+
                 except Exception as e:
-                    print(e, "###### url: {} ######".format(i))
-        except Exception as e:
-            print(e, " #### Entry: {} #######".format(rows[index]['url']))
-        
-        index += 1
-        current_page = rows[index]
-
-        print("index: ", index)
-
-                        
-
-    added = [i['url'] for i in rows[initial_length-1:(initial_length-1)+amount_added]]
-    return ("\n", added, "Links added")
+                    bases_crawled[url_base] -= 1
+                    print(e, link)
+        print("\n")
+    index += 1
+            
 
 
-
-start_point = -1
-while (start_point==-1):
-    new_link = input("Provide a new link or start from somewhere in the dataset")
-    if new_link:
-        rows.append(get_webpage_(new_link))
-        start_point = len(rows)-1
-    else:
-        if len(rows) > 0:
-            start_point = input("Where to start? ") or len(rows)-1 
     
+crawl(150)
+# print(rows)
 
 
-only_new_bases = input("Only new bases? ")
 
 
 
-crawl(start_point, 30, only_new_bases)
 
 
-amount_toappend = input("How many new pages? ") or 1000 
+
+
+
+
+
+
+
+
+
+
+
+
 
