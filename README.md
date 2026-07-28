@@ -16,3 +16,4 @@ ____
 
 Ultimately you'd want to pair it up with some frontend that'd allow for some discovery experiece. Till then you could just make your own queries.  
 
+https://adamkasher.substack.com/p/how-to-make-the-internet-free-again
