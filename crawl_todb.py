@@ -63,10 +63,20 @@ def get_date_from_page(soup):
 
 
 
-def get_webpage_(url): 
 
+
+
+for i in [1, 2, 3, 4, "Asda", 7]:
+    try:
+        a = 1 +i
+        print(a)
+    except Exception as e:
+
+        print(e) 
+
+def get_webpage_(url): 
     print("getting initiated for ", url)
-    response = r.get(url)
+    response = r.get(url, timeout=3)
     print("got response")
 
     soup = bs(response.content)
@@ -170,8 +180,8 @@ from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
-loaded_vectorizer = joblib.load('./machine_models/model/vectorizer4.joblib')
-loaded_clf = joblib.load('./machine_models/model/naive_bayes_model4.joblib')
+loaded_vectorizer = joblib.load('./machine_models/vectorizer5.joblib')
+loaded_clf = joblib.load('./machine_models/naive_bayes_model5.joblib')
 
 
 def is_url_articlesk(url):
@@ -183,18 +193,20 @@ def is_url_articlesk(url):
     return True
 
 
+def crawl(total_amount=20, single_entry_amount=10, pages_per_base=10, starting_point_=False): 
 
-
-
-
-
-def crawl(total_amount=20, single_entry_amount=10, pages_per_base=10): 
     amount_added = 0
 
     bases_crawled = {}
+    bad_links = []
+
 
     index = len(rows)-1
-    print(index)
+    if starting_point_:
+        if starting_point_.isdigit():
+            index = starting_point_ 
+        
+
     while amount_added<total_amount:
 
         links_togo = []
@@ -207,18 +219,37 @@ def crawl(total_amount=20, single_entry_amount=10, pages_per_base=10):
                 entry_links = entry["links"]
 
             # Only those not in the database 
-            links_togo = set(entry_links) - set([i['url'] for i in rows])
+            links_togo_ = (set(entry_links) - set([i['url'] for i in rows])) - set(bad_links)
+
+            # Only those of bases not exceeding limit 
+            links_togo = []
+            for i in links_togo_:
+                if get_urlbase(i) in bases_crawled:
+                    if bases_crawled[get_urlbase(i)] < pages_per_base:
+                        links_togo.append(i)
+                else:
+                    links_togo.append(i)
+            print(links_togo, "links filtered")
 
             # Only those likely referring to an article
             links_togo = [i for i in links_togo if is_url_articlesk(i)]
-            index -= 1
+
+
+            if len(links_togo) < 1: 
+                index -= 1
+                print("decreased", index)
 
 
         retrived_from_entry = 0
-        print("Retriving pages from: ", entry["title"])
+        print("Retriving pages from: ", entry["title"], index)
         # Retrive webpages from a single entry 
+
+        print("for_loop")
+        print(links_togo, "links to go")
         for link in links_togo:
+            print("getting link from entry", index)
             if retrived_from_entry > single_entry_amount:
+                print("break")
                 break
 
             # Limits amount of gathered pages per base
@@ -233,6 +264,7 @@ def crawl(total_amount=20, single_entry_amount=10, pages_per_base=10):
             if bases_crawled[url_base] < pages_per_base:
                 try: 
                     # Get webpage
+                    print("getting link: ", link, index, len(rows))
                     webpage = get_webpage_(link) 
                     rows.append(webpage) 
                     amount_added += 1 
@@ -246,23 +278,47 @@ def crawl(total_amount=20, single_entry_amount=10, pages_per_base=10):
 
                     # Show what's going on 
                     print(webpage['title'], "added") 
-                    print(retrived_from_entry, "out of ", single_entry_amount, "for that entry")
+                    print(retrived_from_entry, "out of ", single_entry_amount, "for that entry", "({})".format(entry["title"]))
                     print(bases_crawled[url_base], "out of ", pages_per_base, "for that base")
                     print(amount_added, "out of ", total_amount, "total")
                     print(url_base)
                     print(bases_crawled)
+                    print(index, len(rows))    
                     print('\n')
 
                 except Exception as e:
                     bases_crawled[url_base] -= 1
-                    print(e, link)
+                    print(e, link, "EEE") 
+                    bad_links.append(link)
+            else:
+                print("base exceeded limit", url_base, bases_crawled)
+
         print("\n")
-    index += 1
+        index += 1
+        print("increased", index)
             
 
+starting_point = input("please provide a link or start somewhere from the dataset")
+if starting_point.isdigit() and int(starting_point)<len(rows):    
+    starting_point = starting_point
+elif starting_point == "":
+    starting_point = False
+else:
+    print("this")
+    rows.append(get_webpage_(starting_point))
 
+while len(rows) < 1:
+    starting_point = input("please provide a link or start somewhere from the dataset")
+
+
+
+
+
+
+
+# total_pages = input("How many pages would you like to add? ")
     
-crawl(150)
+crawl(150, starting_point_=starting_point)
 # print(rows)
 
 
